@@ -1,0 +1,27 @@
+# Planned input for the daily-discovery controller in plan.md Phase 5.
+# Current Career-Ops scanners do not consume this file yet.
+
+timezone: "Africa/Tunis"
+daily_time: "17:00"
+
+target:
+  minimum_qualified_jobs: 5
+  preferred_qualified_jobs_min: 10
+  preferred_qualified_jobs_max: 15
+  match_score_threshold: 75
+
+country_effort:
+  Netherlands: 35
+  France: 25
+  Belgium: 10
+  Denmark: 10
+  Luxembourg: 10
+  Sweden: 10
+
+discovery:
+  initial_posting_age_days: 7
+  expanded_posting_age_days: 30
+  maximum_posting_age_days: 90
+  require_confirmed_eligibility_blocker_exclusion: true
+  allow_unknown_sponsorship_when_no_blocker: true
+  write_google_sheet: false

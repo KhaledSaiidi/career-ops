@@ -11,9 +11,9 @@ Recommendation: use the OpenAI API directly through a hardened structured-output
 ### Verified preconditions and current checkout state
 
 - The checkout is on `main`; the only pre-existing untracked path is `.serena/`. It must remain untouched.
-- `node_modules/` and `package-lock.json` are absent. Script execution could not be fully validated because `js-yaml` is not installed; no dependencies were installed for this planning task.
-- At the initial audit, user-layer files were absent. An approved intake has since created `cv.md`, `config/profile.yml`, and `modes/_profile.md` from the three CV PDFs in `documents/cv/`; `modes/_custom.md`, `portals.yml`, `data/applications.md`, `data/pipeline.md`, `data/scan-history.tsv`, and `data/scan-runs.tsv` remain absent.
-- Candidate facts are now source-backed in the user layer. Phase 1 still needs to configure and validate European discovery sources before any automated evaluation is enabled.
+- Declared Node dependencies are installed locally, including the Playwright runtime. `node intake.mjs`, `node doctor.mjs`, and `npm run lint` have been run successfully; `npm run lint` checked 1,792 `.mjs` files with Node's per-file fallback because this environment uses Node 24.
+- At the initial audit, user-layer files were absent. An approved intake has since created `cv.md`, `config/profile.yml`, and `modes/_profile.md` from the three CV PDFs in `documents/cv/`. `portals.yml` and `config/daily-discovery.yml` now configure Netherlands, France, Belgium, Denmark, Luxembourg, and Sweden; `modes/_custom.md`, `data/applications.md`, `data/pipeline.md`, `data/scan-history.tsv`, and `data/scan-runs.tsv` remain absent.
+- Candidate facts are source-backed and eight public discovery sources have been validated live (Adyen, SES, four WTTJ country feeds, VDAB, and The Hub). Phase 2 should add measured redundancy—especially for Netherlands and Luxembourg—before persistent discovery writes are enabled.
 - No Google Sheets integration exists in the repository. The target sheet was not accessed.
 
 ## B. Current Repository Architecture
@@ -55,7 +55,7 @@ The interactive scoring model is defined in `modes/_shared.md` and `modes/oferta
 | Requirement | Existing functionality | Relevant files | Gap | Recommended change |
 |---|---|---|---|---|
 | Candidate facts/CV | Data contract and profile templates | `cv.md` (missing), `config/profile.example.yml`, `modes/_profile.md` (missing) | No usable user profile in checkout | Create reviewed user-layer CV/profile in Phase 1; do not automate before it exists. |
-| Configured official/ATS discovery | Public, zero-auth providers and filters | `scan.mjs`, `providers/`, `templates/portals.example.yml` | No European profile-specific `portals.yml` | Configure target countries, titles, locations, sources, language and visa filters. |
+| Configured official/ATS discovery | Public, zero-auth providers and filters; eight initial sources validate live | `portals.yml`, `scan.mjs`, `providers/`, `templates/portals.example.yml` | Initial country coverage exists but Netherlands/Luxembourg need more than one official/board path | Add and validate compliant sources incrementally, preserving source provenance and health checks. |
 | Broad discovery | Reverse ATS scan, checkpoint/resume | `scan-ats-full.mjs` | No staged controller/budgets | Reuse as stages 2–7 of a bounded controller. |
 | LinkedIn/Indeed/APEC/HelloWork | No verified core provider; LinkedIn alert plugin only | `docs/PLUGINS.md`, `providers/` | Auth/ToS/restriction risk | Do not scrape or bypass protections. Evaluate compliant opt-in feeds/API integrations per source; use employer URL when supplied. |
 | Liveness/JD capture | API/browser liveness; known-ATS JD fetch | `check-liveness.mjs`, `liveness-*.mjs`, `fetch-jd.mjs` | Orchestrator does not capture standardized verification record | Compose existing verdicts in a new verification adapter. |
@@ -102,7 +102,7 @@ Separate `match_score` from `eligibility_blockers`. A confirmed blocker excludes
 
 ### Immigration verification
 
-Maintain a versioned, reviewed source registry (proposed `config/immigration-sources.yml` system template plus user overrides only for preferences). Netherlands logic must resolve the advertised employing legal entity, then compare it to the [IND Work register](https://ind.nl/en/public-register-recognised-sponsors/public-register-work). A match means employer eligibility/recognition, **not** vacancy sponsorship. The [IND highly-skilled migrant rules](https://ind.nl/en/residence-permits/work/highly-skilled-migrant) state that route requires a recognised sponsor. France and Belgium evidence should record [employer-led work authorisation](https://www.service-public.fr/particuliers/vosdroits/F2728) / [single-permit](https://republiquedecoree.diplomatie.belgium.be/en/travel-belgium/visa-belgium/visa-long-stays-over-90-days/employee-single-permit) routes; Denmark should distinguish a [Positive List](https://www.nyidanmark.dk/en-GB/Words-and-concepts/SIRI/The-Positive-Lists) route from a vacancy commitment; Germany should record the offered job/salary/qualification evidence relevant to an [EU Blue Card](https://www.make-it-in-germany.com/en/visa-recognition/visa-types/eu-blue-card) without promising eligibility. Official source URLs and retrieval dates are mandatory evidence fields.
+Maintain a versioned, reviewed source registry (proposed `config/immigration-sources.yml` system template plus user overrides only for preferences). Netherlands logic must resolve the advertised employing legal entity, then compare it to the [IND Work register](https://ind.nl/en/public-register-recognised-sponsors/public-register-work). A match means employer eligibility/recognition, **not** vacancy sponsorship. The [IND highly-skilled migrant rules](https://ind.nl/en/residence-permits/work/highly-skilled-migrant) state that route requires a recognised sponsor. France and Belgium evidence should record [employer-led work authorisation](https://www.service-public.fr/particuliers/vosdroits/F2728) / [single-permit](https://republiquedecoree.diplomatie.belgium.be/en/travel-belgium/visa-belgium/visa-long-stays-over-90-days/employee-single-permit) routes; Denmark should distinguish a [Positive List](https://www.nyidanmark.dk/en-GB/Words-and-concepts/SIRI/The-Positive-Lists) route from a vacancy commitment; Luxembourg should record the [third-country salaried-worker route](https://guichet.public.lu/en/citoyens/immigration/plus-3-mois/ressortissant-tiers/salarie/salarie-pays-tiers.html), including its employer ADEM vacancy/certificate step, without promising eligibility. Official source URLs and retrieval dates are mandatory evidence fields.
 
 ### Google Sheets
 
@@ -182,7 +182,7 @@ Create reviewed candidate facts and a European discovery configuration from the 
 
 **Current repository state**
 
-The repository’s user layer supports `cv.md`, `config/profile.yml`, `modes/_profile.md`, and `portals.yml`, but all are absent.
+The repository’s user layer supports `cv.md`, `config/profile.yml`, `modes/_profile.md`, and `portals.yml`; Phase 1 configuration and the initial Phase 2 source inventory are now present.
 
 **Implementation tasks**
 
@@ -243,7 +243,7 @@ Configure and test compliant European discovery coverage using existing scanners
 
 **Current repository state**
 
-`scan.mjs` and 90+ providers cover public ATS/job boards; `scan-ats-full.mjs` supports broad ATS scans. No live target configuration exists.
+`scan.mjs` and 90+ providers cover public ATS/job boards; `scan-ats-full.mjs` supports broad ATS scans. The initial target configuration has eight live sources, but coverage redundancy is still intentionally incomplete.
 
 **Implementation tasks**
 
@@ -374,7 +374,7 @@ Liveness and API JD fetch exist; no formal immigration evidence module or legal-
 1. Add `lib/vacancy-verifier.mjs` that composes `fetch-jd.mjs`, liveness APIs/browser, official application URL preference, posting-date normalization, and uncertainty outcomes.
 2. Add `config/immigration-sources.example.yml` and `lib/immigration-evidence.mjs` with official source descriptors, refresh metadata, country route logic, and classifications.
 3. Implement Netherlands legal-entity matching as a conservative normalized-name workflow against a downloaded/versioned IND Work-register snapshot; retain source URL/date and match confidence; never equate register match with vacancy sponsorship.
-4. Implement France, Belgium, Denmark, Germany route evidence as country context plus JD/employer evidence, not an eligibility guarantee. Make source snapshot refresh a separately logged process with fixture support.
+4. Implement France, Belgium, Denmark, Luxembourg route evidence as country context plus JD/employer evidence, not an eligibility guarantee. Make source snapshot refresh a separately logged process with fixture support.
 5. Parse confirmed blockers from JD text deterministically where clear (for example, explicit no sponsorship or authorization required without support), preserve verbatim evidence, and otherwise leave unknown.
 6. Require active liveness for application-ready acceptance; classify bot wall/insufficient evidence as `unverifiable`, not closed, and exclude it under the requested verification policy while reporting it.
 
@@ -725,7 +725,7 @@ Credentials, supplied only through a 0600 `EnvironmentFile` or OS secret store a
 ## J. Final Definition of Done
 
 - [ ] A user-level Ubuntu timer invokes one top-level command daily at 17:00 Africa/Tunis, with overlap protection.
-- [ ] Each run makes meaningful attempts across Netherlands, France, Belgium, Denmark, and Germany, with configured weighted initial effort.
+- [ ] Each run makes meaningful attempts across Netherlands, France, Belgium, Denmark, Luxembourg, and Sweden, with configured weighted initial effort.
 - [ ] Multiple compliant public sources/ATS providers are used and source failures are reported.
 - [ ] Every evaluated vacancy is assessed against the actual, source-backed CV/profile with a validated 0–100 contract.
 - [ ] Score <75 and confirmed eligibility blockers are deterministically excluded.
