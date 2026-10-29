@@ -71,6 +71,7 @@
     "gemini:eval": "node gemini-eval.mjs",
     "ollama:eval": "node ollama-eval.mjs",
     "openai:eval": "node openai-eval.mjs",
+    "openai:europe:eval": "node evaluate-europe-job.mjs",
     "openai:tailor": "node openai-tailor.mjs",
     "eval:golden": "node eval-golden.mjs",
     "star": "node match-star.mjs",

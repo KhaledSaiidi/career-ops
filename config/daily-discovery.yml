@@ -2,7 +2,7 @@
 # Current Career-Ops scanners do not consume this file yet.
 
 timezone: "Africa/Tunis"
-daily_time: "17:00"
+daily_time: "18:00"
 
 target:
   minimum_qualified_jobs: 5

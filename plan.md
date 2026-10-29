@@ -2,7 +2,7 @@
 
 ## A. Executive Summary
 
-Career-Ops can be extended into a local-first, non-applying, daily European job-discovery agent without replacing its discovery architecture. The target run is a single top-level Node command, invoked daily at 17:00 `Africa/Tunis`, that discovers jobs, verifies them, scores each job against the candidate’s CV, applies deterministic eligibility and threshold gates, deduplicates, appends only eligible jobs to the existing Google Sheet, and emits an auditable local report.
+Career-Ops can be extended into a local-first, non-applying, daily European job-discovery agent without replacing its discovery architecture. The target run is a single top-level Node command, invoked daily at 18:00 `Africa/Tunis`, that discovers jobs, verifies them, scores each job against the candidate’s CV, applies deterministic eligibility and threshold gates, deduplicates, appends only eligible jobs to the existing Google Sheet, and emits an auditable local report.
 
 The smallest sound design reuses `scan.mjs`, `scan-ats-full.mjs`, `providers/`, `check-liveness.mjs`, `fetch-jd.mjs`, `evaluation-cache.mjs`, `url-key.mjs`, the scan-history/pipeline locks, and the existing file-first data root. New work should be a narrow orchestration layer plus adapters for a 0–100 evaluator contract, immigration evidence, Google Sheets, run state, and reporting. Do not create a database, service mesh, frontend, or application-submission workflow.
 
@@ -13,7 +13,7 @@ Recommendation: use the OpenAI API directly through a hardened structured-output
 - The checkout is on `main`; the only pre-existing untracked path is `.serena/`. It must remain untouched.
 - Declared Node dependencies are installed locally, including the Playwright runtime. `node intake.mjs`, `node doctor.mjs`, and `npm run lint` have been run successfully; `npm run lint` checked 1,792 `.mjs` files with Node's per-file fallback because this environment uses Node 24.
 - At the initial audit, user-layer files were absent. An approved intake has since created `cv.md`, `config/profile.yml`, and `modes/_profile.md` from the three CV PDFs in `documents/cv/`. `portals.yml` and `config/daily-discovery.yml` now configure Netherlands, France, Belgium, Denmark, Luxembourg, and Sweden; `modes/_custom.md`, `data/applications.md`, `data/pipeline.md`, `data/scan-history.tsv`, and `data/scan-runs.tsv` remain absent.
-- Candidate facts are source-backed and eight public discovery sources have been validated live (Adyen, SES, four WTTJ country feeds, VDAB, and The Hub). Phase 2 should add measured redundancy—especially for Netherlands and Luxembourg—before persistent discovery writes are enabled.
+- Candidate facts are source-backed and nine public discovery sources have been validated live (Adyen, SES, four WTTJ country feeds, VDAB, and The Hub feeds for Denmark and Sweden). The initial six-country inventory is viable; add measured redundancy only when dry-run evidence shows a country/source gap, before persistent discovery writes are enabled.
 - No Google Sheets integration exists in the repository. The target sheet was not accessed.
 
 ## B. Current Repository Architecture
@@ -55,7 +55,7 @@ The interactive scoring model is defined in `modes/_shared.md` and `modes/oferta
 | Requirement | Existing functionality | Relevant files | Gap | Recommended change |
 |---|---|---|---|---|
 | Candidate facts/CV | Data contract and profile templates | `cv.md` (missing), `config/profile.example.yml`, `modes/_profile.md` (missing) | No usable user profile in checkout | Create reviewed user-layer CV/profile in Phase 1; do not automate before it exists. |
-| Configured official/ATS discovery | Public, zero-auth providers and filters; eight initial sources validate live | `portals.yml`, `scan.mjs`, `providers/`, `templates/portals.example.yml` | Initial country coverage exists but Netherlands/Luxembourg need more than one official/board path | Add and validate compliant sources incrementally, preserving source provenance and health checks. |
+| Configured official/ATS discovery | Public, zero-auth providers and filters; nine initial sources validate live | `portals.yml`, `scan.mjs`, `providers/`, `templates/portals.example.yml` | Initial country coverage exists; source redundancy should be evidence-driven | Add and validate compliant sources incrementally when dry-run coverage is weak, preserving source provenance and health checks. |
 | Broad discovery | Reverse ATS scan, checkpoint/resume | `scan-ats-full.mjs` | No staged controller/budgets | Reuse as stages 2–7 of a bounded controller. |
 | LinkedIn/Indeed/APEC/HelloWork | No verified core provider; LinkedIn alert plugin only | `docs/PLUGINS.md`, `providers/` | Auth/ToS/restriction risk | Do not scrape or bypass protections. Evaluate compliant opt-in feeds/API integrations per source; use employer URL when supplied. |
 | Liveness/JD capture | API/browser liveness; known-ATS JD fetch | `check-liveness.mjs`, `liveness-*.mjs`, `fetch-jd.mjs` | Orchestrator does not capture standardized verification record | Compose existing verdicts in a new verification adapter. |
@@ -65,13 +65,13 @@ The interactive scoring model is defined in `modes/_shared.md` and `modes/oferta
 | Durable deduplication | URL/requisition/company-role/fingerprint history | `scan.mjs`, `url-key.mjs`, `listing-fingerprint.mjs`, scan history | No external-output idempotency ledger | Reuse scanner keys; add run/output ledger keyed by dedup key + sheet row receipt. |
 | Google Sheet A:M append | None | No matching repository module | Full integration absent | New minimal Google Sheets REST adapter; append B:M only, read existing B:I/J fields, verify writes. |
 | Daily report | Scan counters, Markdown digest option | `scan.mjs`, `scan-ats-full.mjs` | No end-to-end report schema | New JSON + Markdown per-run report derived from ledger events. |
-| 17:00 Tunis automation | Cron/web scheduling docs | `docs/AUTOMATION.md`, `web/scripts/install-scan-schedule.sh` | No systemd implementation/full command | Add a user systemd service/timer and environment template in final ops phase. |
+| 18:00 Tunis automation | Cron/web scheduling docs | `docs/AUTOMATION.md`, `web/scripts/install-scan-schedule.sh` | No systemd implementation/full command | Add a user systemd service/timer and environment template in final ops phase. |
 
 ## D. Target Architecture
 
 ```mermaid
 flowchart LR
-  T[systemd timer\n17:00 Africa/Tunis] --> R[daily-discovery.mjs\nnew orchestrator]
+  T[systemd timer\n18:00 Africa/Tunis] --> R[daily-discovery.mjs\nnew orchestrator]
   R --> S[Existing scanners\nscan.mjs / scan-ats-full.mjs]
   S --> V[Existing liveness + JD fetch\nnew verification record]
   V --> I[Immigration evidence\nnew adapter registry]
@@ -110,7 +110,7 @@ Use Google Sheets v4 REST API with a least-privilege service account shared only
 
 ### Scheduling and reliability
 
-Use a `systemd --user` service/timer with `Timezone=Africa/Tunis`, `Persistent=true`, `OnCalendar=*-*-* 17:00:00`, explicit working directory, `flock`/process lock, `EnvironmentFile` permissions 0600, and journald logs. The timer invokes only `node daily-discovery.mjs`; business logic stays in Node. A laptop that is powered off cannot meet daily reliability; document an optional small always-on Ubuntu VM after local dry-run stability, without containers/Kubernetes.
+Use a `systemd --user` service/timer with `Timezone=Africa/Tunis`, `Persistent=true`, `OnCalendar=*-*-* 18:00:00`, explicit working directory, `flock`/process lock, `EnvironmentFile` permissions 0600, and journald logs. The timer invokes only `node daily-discovery.mjs`; business logic stays in Node. A laptop that is powered off cannot meet daily reliability; document an optional small always-on Ubuntu VM after local dry-run stability, without containers/Kubernetes.
 
 ## F. Phased Implementation Roadmap
 
@@ -168,7 +168,7 @@ CV intake, discovery runs, model calls, Sheets, scheduling.
 
 **Completion checklist**
 
-- [ ] Implementation complete.
+- [x] Implementation complete.
 - [ ] Tests passing.
 - [ ] Acceptance criteria verified.
 - [ ] Documentation updated.
@@ -243,7 +243,7 @@ Configure and test compliant European discovery coverage using existing scanners
 
 **Current repository state**
 
-`scan.mjs` and 90+ providers cover public ATS/job boards; `scan-ats-full.mjs` supports broad ATS scans. The initial target configuration has eight live sources, but coverage redundancy is still intentionally incomplete.
+`scan.mjs` and 90+ providers cover public ATS/job boards; `scan-ats-full.mjs` supports broad ATS scans. The initial target configuration has nine live sources across all six target countries; future redundancy is evidence-driven.
 
 **Implementation tasks**
 
@@ -306,6 +306,10 @@ Add validated, auditable per-job scoring without changing the existing 1–5 eva
 
 `openai-eval.mjs` makes one streamed text request and parses a textual summary; `evaluation-cache.mjs` supports reusable public facts.
 
+**Implementation status (2026-10-29)**
+
+The focused evaluator is implemented as `lib/openai-client.mjs`, `lib/europe-job-evaluator.mjs`, and `evaluate-europe-job.mjs`. It is intentionally separate from the legacy text evaluator. It sends JSON-Schema requests, validates the 0–100 contract, retries transient transport failures and contract-invalid model responses, uses an atomic local 24-hour cache keyed by listing/JD/CV/profile/model, and returns deterministic decisions. The later verification/orchestration phases must provide verified liveness and invoke this CLI; no live API evaluation was performed during this implementation.
+
 **Implementation tasks**
 
 1. Add `lib/openai-client.mjs` with HTTPS, timeout, bounded exponential retry for retryable 408/429/5xx/network failures, request correlation ID, and redacted errors.
@@ -354,10 +358,10 @@ Live Sheet writes and scheduling.
 **Completion checklist**
 
 - [ ] Implementation complete.
-- [ ] Tests passing.
-- [ ] Acceptance criteria verified.
-- [ ] Documentation updated.
-- [ ] Existing functionality preserved.
+- [x] Tests passing.
+- [x] Acceptance criteria verified.
+- [x] Documentation updated.
+- [x] Existing functionality preserved.
 
 ### Phase 4 — Vacancy and Immigration Verification
 
@@ -578,7 +582,7 @@ Phases 3–6.
 
 **Technical considerations**
 
-`systemd` must not hold business logic. Local persistence needs a backed-up home/disk; a suspended/off laptop can only execute the Persistent missed run when it next resumes, not at 17:00 exactly.
+`systemd` must not hold business logic. Local persistence needs a backed-up home/disk; a suspended/off laptop can only execute the Persistent missed run when it next resumes, not at 18:00 exactly.
 
 **Testing and validation**
 
@@ -719,12 +723,12 @@ Credentials, supplied only through a 0600 `EnvironmentFile` or OS secret store a
 | AI inconsistency/cost/rate limits | Schema validation, golden tests, retries/backoff, fixed model/version, cache, budgets, audit metadata. Phase 3. |
 | Fewer than five real matches | Progressive bounded effort and exact shortfall report; never manipulate scores. Phase 5. |
 | Sheets schema/credentials differ | Read-only validation, strict header guard, B:M-only append, ledger/readback. Phase 6. |
-| Local computer offline at 17:00 | Persistent systemd catch-up; move to a small always-on Ubuntu VM only after need is demonstrated. Phase 7–8. |
+| Local computer offline at 18:00 | Persistent systemd catch-up; move to a small always-on Ubuntu VM only after need is demonstrated. Phase 7–8. |
 | Upstream Career-Ops updates | Keep extensions isolated; respect system/user data contract; test upgrades before pulling changes. |
 
 ## J. Final Definition of Done
 
-- [ ] A user-level Ubuntu timer invokes one top-level command daily at 17:00 Africa/Tunis, with overlap protection.
+- [ ] A user-level Ubuntu timer invokes one top-level command daily at 18:00 Africa/Tunis, with overlap protection.
 - [ ] Each run makes meaningful attempts across Netherlands, France, Belgium, Denmark, Luxembourg, and Sweden, with configured weighted initial effort.
 - [ ] Multiple compliant public sources/ATS providers are used and source failures are reported.
 - [ ] Every evaluated vacancy is assessed against the actual, source-backed CV/profile with a validated 0–100 contract.
