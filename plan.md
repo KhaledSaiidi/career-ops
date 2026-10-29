@@ -12,8 +12,8 @@ Recommendation: use the OpenAI API directly through a hardened structured-output
 
 - The checkout is on `main`; the only pre-existing untracked path is `.serena/`. It must remain untouched.
 - `node_modules/` and `package-lock.json` are absent. Script execution could not be fully validated because `js-yaml` is not installed; no dependencies were installed for this planning task.
-- The user-layer files are absent: `cv.md`, `config/profile.yml`, `modes/_profile.md`, `modes/_custom.md`, `portals.yml`, `data/applications.md`, `data/pipeline.md`, `data/scan-history.tsv`, and `data/scan-runs.tsv`.
-- Therefore the actual CV is not available. The supplied profile is a planning input only; Phase 1 must establish reviewed, source-backed candidate facts before any automated evaluation is enabled.
+- At the initial audit, user-layer files were absent. An approved intake has since created `cv.md`, `config/profile.yml`, and `modes/_profile.md` from the three CV PDFs in `documents/cv/`; `modes/_custom.md`, `portals.yml`, `data/applications.md`, `data/pipeline.md`, `data/scan-history.tsv`, and `data/scan-runs.tsv` remain absent.
+- Candidate facts are now source-backed in the user layer. Phase 1 still needs to configure and validate European discovery sources before any automated evaluation is enabled.
 - No Google Sheets integration exists in the repository. The target sheet was not accessed.
 
 ## B. Current Repository Architecture
