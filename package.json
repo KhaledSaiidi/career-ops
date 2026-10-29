@@ -39,6 +39,7 @@
     "scan:hn": "node scan-hn.mjs",
     "scan": "node scan.mjs",
     "daily:discovery": "node daily-discovery.mjs",
+    "sheets:recommended-jobs": "node sync-recommended-jobs.mjs",
     "scan:full": "node scan-ats-full.mjs",
     "scan:seeds": "node scan-ats-full.mjs --seeds yc,a16z",
     "scan:yc": "node scan-ats-full.mjs --seeds yc",

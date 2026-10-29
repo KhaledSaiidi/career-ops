@@ -506,7 +506,11 @@ Append eligible jobs idempotently to `Recommended Jobs` while preserving columns
 
 **Current repository state**
 
-No Sheets client exists; local URL/requisition dedup is strong but has no external write receipt.
+The Sheets v4 REST client, append-only JSONL export ledger, and `sync-recommended-jobs.mjs` now exist. The endpoint and `Recommended Jobs` A:M header schema were read-only validated against the live workbook; writes remain disabled in `config/daily-discovery.yml` pending an explicit enablement decision. The daily controller persists accepted records before export attempts so failed exports can be retried safely.
+
+**Implementation status (2026-10-29)**
+
+`lib/google-sheets-client.mjs` authenticates with a service-account JSON path held only in `GOOGLE_APPLICATION_CREDENTIALS`, issues short-lived OAuth tokens, validates metadata and exact A:M headers, and retries only safe reads. `lib/recommended-jobs-sync.mjs` maps eligible records to B:M, never addresses A, maintains `data/daily-discovery-export-ledger.jsonl` states (`reserved`, `written`, `verified`, `failed`), verifies readback, and resolves ambiguous append failures by reading before any retry. `daily-discovery.mjs --write-sheet` remains gated by both `--persist-state` and `discovery.write_google_sheet: true`; the latter is currently false. Mocked tests cover schema mismatch, threshold rejection, B:M-only append, idempotent rerun, and lost-response recovery. No live append has been performed.
 
 **Implementation tasks**
 

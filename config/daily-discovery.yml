@@ -37,3 +37,9 @@ discovery:
     Denmark: ["The Hub — Denmark"]
     Luxembourg: ["Welcome to the Jungle — Luxembourg", "SES official SuccessFactors"]
     Sweden: ["The Hub — Sweden"]
+
+# The credential path remains an environment variable, never committed.
+sheets:
+  spreadsheet_id: "1FHJcYOm2nq7MHegIuE0_xsQN9BP0B2SpZCUz06iZfqU"
+  tab: "Recommended Jobs"
+  service_account_credentials_env: "GOOGLE_APPLICATION_CREDENTIALS"

@@ -13,10 +13,12 @@ import { readDailyRunStore, writeDailyRunStore } from './lib/daily-run-store.mjs
 import { runProgressiveSearch } from './lib/progressive-search.mjs';
 import { runFullAtsDryRun, runPortalScanDryRun } from './lib/scanner-receipt-adapter.mjs';
 import { assessDailyCandidate } from './lib/daily-candidate-assessor.mjs';
+import { createGoogleSheetsClientFromCredentials } from './lib/google-sheets-client.mjs';
+import { syncRecommendedJobs } from './lib/recommended-jobs-sync.mjs';
 
 const USAGE = `Usage:
   node daily-discovery.mjs --fixture <staged-candidates.json> [--persist-state] [--state <path>]
-  node daily-discovery.mjs --live-scan [--source portals|full-ats] [--evaluate] [--max-stages N] [--persist-state] [--state <path>]
+  node daily-discovery.mjs --live-scan [--source portals|full-ats] [--evaluate] [--max-stages N] [--persist-state] [--state <path>] [--write-sheet]
 
 --live-scan runs the selected scanner with --dry-run --json only. It never writes
 pipeline/history/Sheets. --evaluate is explicit because it sends the CV and JD
@@ -39,7 +41,7 @@ async function main(args = process.argv.slice(2)) {
   // Dry-run is the safe default: this phase must not create discovery state
   // unless an operator explicitly enables restart persistence.
   const persist = args.includes('--persist-state');
-  const state = persist ? readDailyRunStore(statePath) : { version: 2, processed: {}, identity_index: {}, runs: {} };
+  const state = persist ? readDailyRunStore(statePath) : { version: 2, processed: {}, identity_index: {}, pending_exports: {}, runs: {} };
   const evaluate = args.includes('--evaluate');
   const evaluatorBackend = config.evaluation?.backend ?? 'codex-cli';
   if (evaluate && evaluatorBackend === 'openai-api' && !process.env.OPENAI_API_KEY) throw new Error('--evaluate with openai-api requires OPENAI_API_KEY; no request was sent');
@@ -56,7 +58,21 @@ async function main(args = process.argv.slice(2)) {
     assess: async (candidate) => fixture ? (candidate.assessment ?? { accepted: false, application_ready: false, decision: 'not_assessed' }) : assessDailyCandidate(candidate, { root, evaluate, backend: evaluatorBackend }),
     ...(maxStages === undefined ? {} : { maxStages }),
   });
+  // Persist accepted records before a remote write. If the process or network
+  // fails during export, the next explicit export can resume from pending state.
   if (persist) writeDailyRunStore(statePath, next);
-  process.stdout.write(`${JSON.stringify({ ...report, state_persisted: persist }, null, 2)}\n`);
+  let sheetSync = null;
+  if (args.includes('--write-sheet')) {
+    if (!persist) throw new Error('--write-sheet requires --persist-state so failed exports remain retryable');
+    if (config.discovery?.write_google_sheet !== true) throw new Error('Set discovery.write_google_sheet: true only when ready to enable live Google Sheets writes');
+    const spreadsheetId = config.sheets?.spreadsheet_id;
+    const credentialPath = process.env[config.sheets?.service_account_credentials_env ?? 'GOOGLE_APPLICATION_CREDENTIALS'];
+    const ledgerPath = join(root, 'data', 'daily-discovery-export-ledger.jsonl');
+    const client = createGoogleSheetsClientFromCredentials(credentialPath);
+    sheetSync = await syncRecommendedJobs({ client, spreadsheetId, records: Object.values(next.pending_exports ?? {}), ledgerPath, tab: config.sheets?.tab ?? 'Recommended Jobs' });
+    for (const row of [...sheetSync.written, ...sheetSync.skipped.filter((entry) => entry.reason === 'already_exported')]) delete next.pending_exports?.[row.dedup_key];
+  }
+  if (persist && sheetSync) writeDailyRunStore(statePath, next);
+  process.stdout.write(`${JSON.stringify({ ...report, state_persisted: persist, sheet_sync: sheetSync }, null, 2)}\n`);
 }
 main().catch((error) => { console.error(`daily-discovery: ${error.message}`); process.exitCode = 1; });
