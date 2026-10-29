@@ -1,0 +1,18 @@
+# Official route evidence only. These URLs do not prove a specific vacancy sponsors.
+# A refreshed IND work-register snapshot belongs in ignored data/ and must include
+# source_url, as_of (YYYY-MM-DD), and employers[] with the employing legal names.
+sources:
+  Netherlands:
+    route_url: "https://ind.nl/en/residence-permits/work/highly-skilled-migrant"
+    recognised_sponsor_register_url: "https://ind.nl/en/public-register-recognised-sponsors/public-register-work"
+    snapshot_max_age_days: 45
+  France:
+    route_url: "https://www.service-public.fr/particuliers/vosdroits/F2728?lang=en"
+  Belgium:
+    route_url: "https://www.belgium.be/en/work/coming_to_work_in_belgium"
+  Denmark:
+    route_url: "https://www.nyidanmark.dk/en-GB/You-want-to-apply/Work"
+  Luxembourg:
+    route_url: "https://guichet.public.lu/en/citoyens/immigration/vivre/non-luxembourg/immigration/pays-tiers/salarie/salarie-pays-tiers.html"
+  Sweden:
+    route_url: "https://www.migrationsverket.se/en/employers/how-it-works.html"

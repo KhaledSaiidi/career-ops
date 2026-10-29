@@ -373,11 +373,15 @@ Produce evidence-based authenticity, liveness, publication-date, and immigration
 
 Liveness and API JD fetch exist; no formal immigration evidence module or legal-entity-to-IND workflow exists.
 
+**Implementation status (2026-10-29)**
+
+Implemented `lib/vacancy-verifier.mjs` and `lib/immigration-evidence.mjs`, with offline fixtures in `tests/vacancy-verifier.test.mjs`. The verifier composes the existing API liveness/JD fetch interfaces through injectable dependencies, preserves unknown publication dates, classifies expired/unverifiable/blocked records without guessing, and requires an active listing plus JD before calling a candidate application-ready. Netherlands IND matching is exact normalized legal-name matching against a separately supplied, freshness-checked snapshot; its result is explicitly employer eligibility, never a vacancy sponsorship promise. The evaluator policy can now consume confirmed verification blockers deterministically. Live browser fallback and snapshot refresh are intentionally deferred to orchestration/operations work.
+
 **Implementation tasks**
 
 1. Add `lib/vacancy-verifier.mjs` that composes `fetch-jd.mjs`, liveness APIs/browser, official application URL preference, posting-date normalization, and uncertainty outcomes.
 2. Add `config/immigration-sources.example.yml` and `lib/immigration-evidence.mjs` with official source descriptors, refresh metadata, country route logic, and classifications.
-3. Implement Netherlands legal-entity matching as a conservative normalized-name workflow against a downloaded/versioned IND Work-register snapshot; retain source URL/date and match confidence; never equate register match with vacancy sponsorship.
+3. Implement Netherlands legal-entity matching as a conservative normalized-name workflow against a downloaded/versioned IND Work-register snapshot; retain source URL/date and match confidence; never equate register match with vacancy sponsorship. **Completed with a supplied snapshot; refresh workflow remains deferred.**
 4. Implement France, Belgium, Denmark, Luxembourg route evidence as country context plus JD/employer evidence, not an eligibility guarantee. Make source snapshot refresh a separately logged process with fixture support.
 5. Parse confirmed blockers from JD text deterministically where clear (for example, explicit no sponsorship or authorization required without support), preserve verbatim evidence, and otherwise leave unknown.
 6. Require active liveness for application-ready acceptance; classify bot wall/insufficient evidence as `unverifiable`, not closed, and exclude it under the requested verification policy while reporting it.
@@ -439,7 +443,7 @@ Scanners are independently idempotent and bounded; there is no target-driven con
 
 1. Create `daily-discovery.mjs`, reading `config/daily-discovery.yml`; default `--dry-run` and explicit `--write-sheet` safety gate.
 2. Implement stages: (1) five countries/preferred titles/7 days; (2) additional configured sources; (3) cities/regions; (4) 30 then 90 days only if still active; (5) adjacent roles; (6) compatible mid/senior breadth; (7) configured additional European countries; (8) credible unknown sponsorship/no blocker.
-3. Allocate initial effort by country (NL 40, FR 25, BE 15, DK 12, DE 8) and enforce at least one meaningful attempt per country before expansion.
+3. Allocate initial effort by country (NL 35, FR 25, BE 10, DK 10, LU 10, SE 10) and enforce at least one meaningful attempt per country before expansion.
 4. At each stage: invoke existing scanner interfaces/config snapshots, merge candidates by canonical existing identity, pre-dedup before costly verification/evaluation, process only unprocessed candidate fingerprints, count only accepted and export-eligible records.
 5. Add limits: per-stage source/query budgets, max candidates, max model calls, max wall-clock time, per-source cooldown, and no-progress stop criteria. Persist stage attempts/checkpoints so restart resumes safely.
 6. Stop at preferred target 10–15 or when budget/exhaustion rules trigger; minimum-five is an effort target, not an all-or-nothing export requirement.
