@@ -6,7 +6,7 @@ Career-Ops can be extended into a local-first, non-applying, daily European job-
 
 The smallest sound design reuses `scan.mjs`, `scan-ats-full.mjs`, `providers/`, `check-liveness.mjs`, `fetch-jd.mjs`, `evaluation-cache.mjs`, `url-key.mjs`, the scan-history/pipeline locks, and the existing file-first data root. New work should be a narrow orchestration layer plus adapters for a 0–100 evaluator contract, immigration evidence, Google Sheets, run state, and reporting. Do not create a database, service mesh, frontend, or application-submission workflow.
 
-Recommendation: use the OpenAI API directly through a hardened structured-output adapter, not Codex CLI, for unattended per-vacancy evaluation. Codex remains useful for interactive review and development, but its CLI output and availability are not a stable machine contract for a daily production job. Use `systemd` user service + timer on Ubuntu first; use an always-on VM only if the workstation cannot reliably be awake and online.
+Candidate decision (2026-10-29): use the locally installed Codex CLI through its saved ChatGPT login for per-vacancy evaluation; do not require an OpenAI API key. The evaluator invokes `codex exec` ephemerally, read-only, and with a JSON Schema output contract, then applies the same deterministic validation/gates. Keep the direct OpenAI API adapter as an optional fallback for a future always-on deployment. Use `systemd` user service + timer on Ubuntu first; use an always-on VM only if the workstation cannot reliably be awake and online.
 
 ### Verified preconditions and current checkout state
 
@@ -88,11 +88,11 @@ Each candidate flows through: normalize identity → deduplicate before expensiv
 
 ## E. Technical Decisions
 
-### OpenAI API over Codex CLI
+### Codex CLI over direct OpenAI API
 
-Recommend OpenAI API. `openai-eval.mjs` proves compatibility with the project’s prompt/context model, but needs a new JSON contract adapter. The API can use one configured model, JSON Schema/structured output where supported, fixed temperature, per-request timeout, bounded retries, model/version recording, and deterministic tests against captured fixtures. It avoids relying on an interactive Codex session, installed CLI credentials, browser tools, or unstructured terminal output. Codex CLI remains a good interactive operator tool, but is not recommended as an unattended decision engine.
+Use Codex CLI because the candidate explicitly prefers their existing ChatGPT-authenticated local installation over API credentials. `codex exec` supports a non-interactive, ephemeral, read-only invocation and JSON Schema-constrained final output. The adapter validates its result before deterministic acceptance. The local systemd service must verify `codex login status` and report a failed/expired login distinctly; the laptop must remain online and logged in. Direct OpenAI API remains an optional fallback for environments where stable credentials, quotas, and shorter requests outweigh the no-key requirement.
 
-Use direct OpenAI API by default, with an abstraction no wider than `lib/openai-client.mjs` so the current compatible endpoint option can remain possible. Pin model name via environment/config and record it. Cache only public job facts using the existing `evaluation-cache.mjs` semantics; cache evaluation results by listing fingerprint + CV/profile revision + evaluator-contract version.
+Use `lib/codex-cli-evaluator.mjs` by default, with an abstraction that retains `lib/openai-client.mjs` as an optional fallback. Pin the optional Codex model through `CODEX_EVALUATOR_MODEL`, record the selected model, and validate every JSON response. Cache only public job facts using the existing `evaluation-cache.mjs` semantics; cache evaluation results by listing fingerprint + CV/profile revision + evaluator-contract version.
 
 ### Scoring and decision policy
 
@@ -273,7 +273,7 @@ Provider parser fixtures, `node test-all.mjs --only providers/<source>`, dry-run
 **Acceptance criteria**
 
 - Every enabled portal is claimed by a loaded provider or explicitly handled.
-- All five countries have at least two viable discovery paths where the market permits.
+- All six priority countries have at least one configured compliant discovery path; add a second independent source where current coverage is single-source.
 - No restricted source is scraped through a bypass.
 
 **Deliverable**
@@ -308,7 +308,7 @@ Add validated, auditable per-job scoring without changing the existing 1–5 eva
 
 **Implementation status (2026-10-29)**
 
-The focused evaluator is implemented as `lib/openai-client.mjs`, `lib/europe-job-evaluator.mjs`, and `evaluate-europe-job.mjs`. It is intentionally separate from the legacy text evaluator. It sends JSON-Schema requests, validates the 0–100 contract, retries transient transport failures and contract-invalid model responses, uses an atomic local 24-hour cache keyed by listing/JD/CV/profile/model, and returns deterministic decisions. The later verification/orchestration phases must provide verified liveness and invoke this CLI; no live API evaluation was performed during this implementation.
+The focused evaluator is implemented as `lib/europe-job-evaluator.mjs`, `lib/openai-client.mjs`, `lib/codex-cli-evaluator.mjs`, and `evaluate-europe-job.mjs`. `daily-discovery.mjs` defaults to the Codex CLI backend, which uses saved ChatGPT authentication, an ephemeral read-only sandbox, JSON Schema output, and deterministic validation. The direct OpenAI adapter remains optional. No live model evaluation was performed during implementation.
 
 **Implementation tasks**
 
@@ -331,7 +331,7 @@ Phases 0–1.
 
 **Technical considerations**
 
-Use OpenAI API credentials only at runtime. Do not reuse `openai-eval.mjs` output parsing for acceptance decisions; preserve it as a backward-compatible CLI. Record model, prompt/contract version, usage, retries, and evidence provenance.
+Use the saved Codex CLI login by default at runtime; `OPENAI_API_KEY` is needed only when the optional API fallback is selected. Do not reuse `openai-eval.mjs` output parsing for acceptance decisions; preserve it as a backward-compatible CLI. Record model, prompt/contract version, usage, retries, and evidence provenance.
 
 **Testing and validation**
 
@@ -375,7 +375,7 @@ Liveness and API JD fetch exist; no formal immigration evidence module or legal-
 
 **Implementation status (2026-10-29)**
 
-Implemented `lib/vacancy-verifier.mjs` and `lib/immigration-evidence.mjs`, with offline fixtures in `tests/vacancy-verifier.test.mjs`. The verifier composes the existing API liveness/JD fetch interfaces through injectable dependencies, preserves unknown publication dates, classifies expired/unverifiable/blocked records without guessing, and requires an active listing plus JD before calling a candidate application-ready. Netherlands IND matching is exact normalized legal-name matching against a separately supplied, freshness-checked snapshot; its result is explicitly employer eligibility, never a vacancy sponsorship promise. The evaluator policy can now consume confirmed verification blockers deterministically. Live browser fallback and snapshot refresh are intentionally deferred to orchestration/operations work.
+Implemented `lib/vacancy-verifier.mjs`, `lib/provider-jd.mjs`, and `lib/immigration-evidence.mjs`, with offline fixtures. The verifier composes existing API/browser liveness and JD fetch interfaces through injectable dependencies, preserves unknown publication dates, classifies expired/unverifiable/blocked records without guessing, and requires an active listing plus JD before calling a candidate application-ready. WTTJ public Algolia profile text and The Hub public JobPosting JSON-LD now supply source-specific JD evidence; a current public discovery-feed listing is only a liveness fallback when direct access is uncertain, never proof that submission succeeded. Netherlands IND matching is exact normalized legal-name matching against a separately supplied, freshness-checked snapshot; its result is explicitly employer eligibility, never a vacancy sponsorship promise. The evaluator policy can consume confirmed verification blockers deterministically. Snapshot refresh remains an operations prerequisite.
 
 **Implementation tasks**
 
@@ -439,10 +439,14 @@ Deliver a bounded, target-aware daily search controller that continues toward fi
 
 Scanners are independently idempotent and bounded; there is no target-driven controller.
 
+**Implementation status (2026-10-29)**
+
+Implemented the controller core in `lib/progressive-search.mjs`, restart-safe local state in `lib/daily-run-store.mjs`, JSON receipt adapter in `lib/scanner-receipt-adapter.mjs`, verification/evaluation adapter in `lib/daily-candidate-assessor.mjs`, and `daily-discovery.mjs`. `--live-scan --source portals` explicitly invokes the configured `scan.mjs --dry-run --json` sources; `--source full-ats` retains reverse-ATS coverage. Candidates then pass through verification and, only with `--evaluate`, the structured OpenAI evaluator. It never writes pipeline/history/Sheets. Live scanning defaults to one stage; `--max-stages 1..8` is explicit to bound network/cost. `config/daily-discovery.yml` records the currently configured source provenance per priority country—not as a country quota or guarantee. A 2026-10-29 verification-only dry run read 2,032 portal listings and surfaced 10 candidates; none had sufficient liveness/JD evidence to become application-ready. Sheets remain out of scope.
+
 **Implementation tasks**
 
 1. Create `daily-discovery.mjs`, reading `config/daily-discovery.yml`; default `--dry-run` and explicit `--write-sheet` safety gate.
-2. Implement stages: (1) five countries/preferred titles/7 days; (2) additional configured sources; (3) cities/regions; (4) 30 then 90 days only if still active; (5) adjacent roles; (6) compatible mid/senior breadth; (7) configured additional European countries; (8) credible unknown sponsorship/no blocker.
+2. Implement stages: (1) six priority countries/preferred titles/7 days; (2) additional configured sources; (3) cities/regions; (4) 30 then 90 days only if still active; (5) adjacent roles; (6) compatible mid/senior breadth; (7) configured additional European countries; (8) credible unknown sponsorship/no blocker.
 3. Allocate initial effort by country (NL 35, FR 25, BE 10, DK 10, LU 10, SE 10) and enforce at least one meaningful attempt per country before expansion.
 4. At each stage: invoke existing scanner interfaces/config snapshots, merge candidates by canonical existing identity, pre-dedup before costly verification/evaluation, process only unprocessed candidate fingerprints, count only accepted and export-eligible records.
 5. Add limits: per-stage source/query budgets, max candidates, max model calls, max wall-clock time, per-source cooldown, and no-progress stop criteria. Persist stage attempts/checkpoints so restart resumes safely.
@@ -709,7 +713,8 @@ Non-secret user configuration:
 
 Credentials, supplied only through a 0600 `EnvironmentFile` or OS secret store and never committed:
 
-- `OPENAI_API_KEY`, `OPENAI_MODEL`, optional `OPENAI_BASE_URL`, `OPENAI_TIMEOUT_MS`.
+- Default evaluator: existing `codex login` ChatGPT authentication, optional `CODEX_EVALUATOR_MODEL`, and optional `CODEX_EVALUATOR_TIMEOUT_MS`.
+- Optional API fallback only: `OPENAI_API_KEY`, `OPENAI_MODEL`, optional `OPENAI_BASE_URL`, `OPENAI_TIMEOUT_MS`.
 - `GOOGLE_SHEETS_SPREADSHEET_ID=1FHJcYOm2nq7MHegIuE0_xsQN9BP0B2SpZCUz06iZfqU`, `GOOGLE_SHEETS_TAB=Recommended Jobs`.
 - One of service-account JSON path/credential references or OAuth client/refresh-token references; never put JSON private keys in `config/` or Git.
 - Optional explicit path overrides already supported by Career-Ops (`CAREER_OPS_ROOT`, `CAREER_OPS_DATA_DIR`, tracker/scan paths) must resolve safely through `path-resolver.mjs`.

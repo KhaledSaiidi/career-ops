@@ -10,6 +10,10 @@ target:
   preferred_qualified_jobs_max: 15
   match_score_threshold: 75
 
+evaluation:
+  # Uses `codex exec` with this laptop's saved ChatGPT login; no API key.
+  backend: "codex-cli"
+
 country_effort:
   Netherlands: 35
   France: 25
@@ -25,3 +29,11 @@ discovery:
   require_confirmed_eligibility_blocker_exclusion: true
   allow_unknown_sponsorship_when_no_blocker: true
   write_google_sheet: false
+  # Adapter selection is explicit; all runs retain source/country provenance.
+  country_source_coverage:
+    Netherlands: ["Welcome to the Jungle — Netherlands", "Adyen official Greenhouse"]
+    France: ["Welcome to the Jungle — France"]
+    Belgium: ["Welcome to the Jungle — Belgium", "VDAB"]
+    Denmark: ["The Hub — Denmark"]
+    Luxembourg: ["Welcome to the Jungle — Luxembourg", "SES official SuccessFactors"]
+    Sweden: ["The Hub — Sweden"]

@@ -5215,6 +5215,18 @@ async function main() {
       duplicates: totalDupes,
       added: verifiedOffers.length,
       added_urls: verifiedOffers.map(offer => offer.url),
+      // A dry-run must remain non-persistent, but callers need the same
+      // candidate facts the human summary prints in order to verify/evaluate
+      // them without reparsing terminal prose.
+      added_offers: verifiedOffers.map((offer) => ({
+        company: offer.company ?? null,
+        title: offer.title ?? null,
+        url: offer.url,
+        location: offer.location ?? null,
+        postedAt: offer.postedAt ?? offer.date ?? null,
+        description: offer.description ?? null,
+        source: offer.source ?? null,
+      })),
       errors: errors.map(({ company, error }) => ({ company, error })),
       unverified_zero: unverifiedZeroTargets,
       dry_run: dryRun,

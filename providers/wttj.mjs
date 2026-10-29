@@ -136,8 +136,15 @@ export function normalizeWttjHit(h) {
   if (h.remote === 'fulltime') parts.push('Remote');
   const location = parts.join(', ');
 
-  /** @type {{ title: string, url: string, company: string, location: string, postedAt?: number, salary?: {min: number, max: number, currency: string} }} */
+  /** @type {{ title: string, url: string, company: string, location: string, description?: string, postedAt?: number, salary?: {min: number, max: number, currency: string} }} */
   const job = { title, url, company, location };
+
+  // WTTJ's public Algolia record carries the candidate-facing summary/profile.
+  // Retain it as source data so later verification need not scrape a 403 page.
+  const description = ['summary', 'profile', 'missions', 'description']
+    .map((key) => typeof h[key] === 'string' ? h[key].trim() : '')
+    .filter(Boolean).join('\n\n');
+  if (description) job.description = description;
 
   const ts = h.published_at_timestamp;
   if (Number.isFinite(ts) && ts > 0) job.postedAt = ts * 1000;
@@ -214,7 +221,7 @@ export default {
         query,
         hitsPerPage: String(maxHits),
         attributesToRetrieve:
-          'name,slug,organization,offices,remote,published_at_timestamp,salary_yearly_minimum,salary_maximum,salary_period,salary_currency',
+          'name,slug,organization,offices,remote,published_at_timestamp,salary_yearly_minimum,salary_maximum,salary_period,salary_currency,summary,profile,missions,description',
       });
       // Algolia parses `filters` as a filter expression against the index's
       // faceted attributes; it never reaches a URL or host, so the assertHost
