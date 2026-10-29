@@ -17,10 +17,20 @@ await check('five qualifying jobs stop expansion at the preferred target', async
   assert.equal(report.attempts.length, 1); assert.equal(report.shortfall, 0);
 });
 await check('exhaustion with three writes a precise two-job shortfall and restart skips processed candidates', async () => {
-  const state = { version: 1, processed: {}, runs: {} };
+  const state = { version: 2, processed: {}, identity_index: {}, runs: {} };
   const first = await runProgressiveSearch({ config, state, maxStages: 8, discover: async (stage) => stage.number === 1 ? { candidates: [job(1), job(2), job(3)], sources: ['fixture'] } : { candidates: [], sources: ['fixture'] }, assess: async (candidate) => candidate.assessment });
   assert.equal(first.report.shortfall, 2); assert.equal(first.report.exhausted, true);
   const second = await runProgressiveSearch({ config, state: first.state, maxStages: 1, discover: async () => ({ candidates: [job(1)], sources: ['fixture'] }), assess: async () => { throw new Error('must not re-evaluate'); } });
   assert.equal(second.report.processed, 0); assert.equal(second.report.rejected[0].reason, 'already_processed');
   assert.equal(second.report.stopped_by_budget, true);
+});
+await check('canonical URL variants dedupe while distinct requisitions remain separate', async () => {
+  const state = { version: 2, processed: {}, identity_index: {}, runs: {} };
+  const first = await runProgressiveSearch({ config, state, maxStages: 1, discover: async () => ({ candidates: [
+    { ...job(1), url: 'https://jobs.example.test/123?utm_source=mail&jobId=123', application_url: 'https://jobs.example.test/123?utm_source=mail&jobId=123', requisition_id: 'REQ-123' },
+    { ...job(2), url: 'https://jobs.example.test/123?jobId=123&utm_campaign=x', application_url: 'https://jobs.example.test/123?jobId=123&utm_campaign=x', requisition_id: 'REQ-123' },
+    { ...job(3), url: 'https://jobs.example.test/124?jobId=124', application_url: 'https://jobs.example.test/124?jobId=124', requisition_id: 'REQ-124' },
+  ] }), assess: async (candidate) => candidate.assessment });
+  assert.equal(first.report.accepted.length, 2);
+  assert.equal(first.report.rejected.filter((row) => row.reason === 'already_processed').length, 1);
 });

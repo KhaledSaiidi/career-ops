@@ -22,7 +22,7 @@ const USAGE = `Usage:
 pipeline/history/Sheets. --evaluate is explicit because it sends the CV and JD
 to the configured evaluator (Codex CLI by default); without it candidates are verified only.
 Live scan defaults to one stage; pass --max-stages 8 only after validating
-source budgets and OpenAI credentials.`;
+source budgets and configured evaluator availability.`;
 function value(args, flag) { const i = args.indexOf(flag); return i < 0 ? null : args[i + 1]; }
 function json(path) { return JSON.parse(readFileSync(path, 'utf8')); }
 
@@ -39,7 +39,7 @@ async function main(args = process.argv.slice(2)) {
   // Dry-run is the safe default: this phase must not create discovery state
   // unless an operator explicitly enables restart persistence.
   const persist = args.includes('--persist-state');
-  const state = persist ? readDailyRunStore(statePath) : { version: 1, processed: {}, runs: {} };
+  const state = persist ? readDailyRunStore(statePath) : { version: 2, processed: {}, identity_index: {}, runs: {} };
   const evaluate = args.includes('--evaluate');
   const evaluatorBackend = config.evaluation?.backend ?? 'codex-cli';
   if (evaluate && evaluatorBackend === 'openai-api' && !process.env.OPENAI_API_KEY) throw new Error('--evaluate with openai-api requires OPENAI_API_KEY; no request was sent');
