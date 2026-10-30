@@ -1,0 +1,22 @@
+[Unit]
+Description=Career-Ops daily European job discovery
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/khaleds/career-ops
+Environment=HOME=%h
+Environment=TZ=Africa/Tunis
+Environment=PATH=/home/khaleds/.nvm/versions/node/v24.19.0/bin:/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=-%h/.config/career-ops/daily.env
+# flock exits 75 when another run owns the runtime lock; this is an expected skip.
+SuccessExitStatus=75
+ExecStart=/usr/bin/flock -n -E 75 %t/career-ops-daily.lock /home/khaleds/.nvm/versions/node/v24.19.0/bin/node /home/khaleds/career-ops/daily-discovery.mjs --live-scan --source portals --max-stages 8 --evaluate --persist-state --write-sheet
+TimeoutStartSec=45min
+Nice=10
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ReadWritePaths=/home/khaleds/career-ops
+

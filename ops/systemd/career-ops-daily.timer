@@ -1,0 +1,11 @@
+[Unit]
+Description=Run Career-Ops daily discovery at 18:00 Africa/Tunis
+
+[Timer]
+OnCalendar=*-*-* 18:00:00 Africa/Tunis
+Persistent=true
+Unit=career-ops-daily.service
+
+[Install]
+WantedBy=timers.target
+

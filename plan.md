@@ -575,7 +575,11 @@ Make the end-to-end command observable and safely unattended on Ubuntu.
 
 **Current repository state**
 
-Scanner run summaries and automation documentation exist, but no full daily runner, systemd unit, or comprehensive report exists.
+The daily controller now emits persistent JSON and Markdown reports through `lib/daily-report.mjs`; no systemd units are installed or enabled automatically.
+
+**Implementation status (2026-10-30)**
+
+`daily-discovery.mjs` now produces an auditable report for success, partial source failures, export failures, and configuration/runtime failures. Reports live in `output/daily-runs/<Africa-Tunis-date>/` and record source stages, exact shortfall, rejection counters, country counts, strongest accepted records, immigration/date evidence, and Sheets outcomes. `ops/systemd/` supplies a validated user service/timer at 18:00 `Africa/Tunis`, with `flock` overlap protection, persisted missed-timer behavior, journald logging, and an environment-file example. `docs/DAILY_DISCOVERY_OPERATIONS.md` documents controlled activation and recovery. No timer was installed, no config gate was enabled, and no live run was started.
 
 **Implementation tasks**
 
@@ -637,6 +641,10 @@ Prove the complete workflow with no accidental submissions or duplicate exports 
 **Current repository state**
 
 The previous phases provide modular functionality; no live baseline currently exists.
+
+**Rollout evidence (2026-10-30)**
+
+The deterministic Phase 8 suite passes, and a read-only live Google Sheets validation confirmed the configured workbook, `Recommended Jobs` tab, `sheetId` `1972763707`, and exact A:M headers. One-stage live evaluated dry runs were attempted with Sheets writes disabled. Public discovery/verification reached the Codex CLI evaluator, but the installed headless CLI did not return its required structured-output artifact within the original five-minute bound; each controller run emitted a failed local report and made no Sheet write. The evaluator default is now bounded to 120 seconds per vacancy and keeps its schema artifact inside the readable workspace. Phase 8 is blocked on a successful schema-valid Codex CLI evaluation in the unattended runtime; do not enable `write_google_sheet` or the timer until that condition is met.
 
 **Implementation tasks**
 
