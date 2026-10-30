@@ -644,7 +644,7 @@ The previous phases provide modular functionality; no live baseline currently ex
 
 **Rollout evidence (2026-10-30)**
 
-The deterministic Phase 8 suite passes, and a read-only live Google Sheets validation confirmed the configured workbook, `Recommended Jobs` tab, `sheetId` `1972763707`, and exact A:M headers. One-stage live evaluated dry runs were attempted with Sheets writes disabled. Public discovery/verification reached the Codex CLI evaluator, but the installed headless CLI did not return its required structured-output artifact within the original five-minute bound; each controller run emitted a failed local report and made no Sheet write. The evaluator default is now bounded to 120 seconds per vacancy and keeps its schema artifact inside the readable workspace. Phase 8 is blocked on a successful schema-valid Codex CLI evaluation in the unattended runtime; do not enable `write_google_sheet` or the timer until that condition is met.
+The deterministic Phase 8 suite passes, and a read-only live Google Sheets validation confirmed the configured workbook, `Recommended Jobs` tab, `sheetId` `1972763707`, and exact A:M headers. Earlier one-stage dry runs reached Codex but failed because the Node `execFile()` launcher left stdin open; Codex treats piped stdin as additional prompt input and waited for EOF. The evaluator now uses `spawn()` and closes stdin explicitly. A real ChatGPT-authenticated, schema-constrained smoke test through the exact production adapter returned `{"ok":true}` in approximately seven seconds. The next controlled step is to repeat the one-stage evaluated job run before enabling `write_google_sheet` or the timer.
 
 **Implementation tasks**
 
