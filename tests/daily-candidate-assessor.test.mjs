@@ -29,3 +29,19 @@ await check('Codex CLI result still passes deterministic threshold policy', asyn
   });
   assert.equal(called, true); assert.equal(result.accepted, true); assert.equal(result.decision, 'accepted_pending_verification');
 });
+await check('Codex gets one bounded correction retry for an invalid score total', async () => {
+  const invalid = {
+    schema_version: 1, match_score: 75,
+    score_breakdown: { technical_stack: 25, responsibilities: 15, seniority_experience: 10, immigration_feasibility: 10, language: 10, relocation: 3, employment_arrangement: 1 },
+    technical_matches: [{ requirement: 'Kubernetes', candidate_evidence: 'CV records Kubernetes experience' }], technical_gaps: [],
+    immigration: { classification: 'unknown', evidence: [] }, language: { classification: 'compatible', evidence: [] },
+    relocation: { classification: 'unknown', evidence: [] }, employment: { classification: 'employee', evidence: [] }, eligibility_blockers: [], uncertainties: [],
+  };
+  const valid = { ...invalid, match_score: 74 };
+  let calls = 0;
+  const result = await assessDailyCandidate({ title: 'Platform Engineer', description: 'Kubernetes' }, {
+    root: ROOT, evaluate: true, backend: 'codex-cli', verifyFn: async () => active,
+    codexRequestFn: async ({ prompt }) => { calls += 1; if (calls === 2) assert.match(prompt, /add technical_stack/); return { value: calls === 1 ? invalid : valid, model: 'codex-test', attempts: 1 }; },
+  });
+  assert.equal(calls, 2); assert.equal(result.decision, 'rejected_below_threshold'); assert.equal(result.attempts, 2);
+});

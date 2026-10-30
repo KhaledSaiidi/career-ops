@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { EventEmitter } from 'node:events';
 import { pass, fail, ROOT } from './helpers.mjs';
-import { buildCodexEvaluationPrompt, requestCodexStructuredEvaluation, runCodexProcess } from '../lib/codex-cli-evaluator.mjs';
+import { buildCodexEvaluationPrompt, parseCodexStructuredOutput, requestCodexStructuredEvaluation, runCodexProcess } from '../lib/codex-cli-evaluator.mjs';
 
 console.log('\ncodex CLI evaluator — ephemeral, read-only structured output');
 async function check(label, fn) { try { await fn(); pass(label); } catch (error) { fail(`${label} — ${error.message}`); } }
@@ -19,9 +19,13 @@ await check('invokes codex exec ephemerally with read-only sandbox and output sc
     writeFileSync(outputPath, '{"ok":true}\n');
   } });
   assert.equal(result.value.ok, true);
-  assert.deepEqual(received.slice(0, 5), ['exec', '--ephemeral', '--sandbox', 'read-only', '--output-schema']);
+  assert.deepEqual(received.slice(0, 6), ['exec', '--ephemeral', '--sandbox', 'read-only', '--json', '--output-schema']);
   const schemaPath = received[received.indexOf('--output-schema') + 1];
   assert.equal(existsSync(schemaPath), false, 'temporary schema must be removed after run');
+});
+await check('extracts final schema JSON from Codex JSONL events', () => {
+  const value = parseCodexStructuredOutput('{"type":"turn.started"}\n{"type":"item.completed","item":{"type":"agent_message","text":"{\\"ok\\":true}"}}');
+  assert.deepEqual(value, { ok: true });
 });
 await check('closes Codex stdin so a prompt argument cannot wait for piped input', async () => {
   let ended = false;

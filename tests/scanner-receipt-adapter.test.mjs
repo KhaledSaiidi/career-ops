@@ -24,6 +24,7 @@ await check('extracts the final scanner receipt after human progress output', ()
 await check('maps portal dry-run offers and retains configured country provenance', async () => {
   assert.equal(mapPortalReceipt(portalReceipt)[0].source, 'wttj');
   assert.equal(mapPortalReceipt(portalReceipt)[0].description, 'Kubernetes role');
+  assert.equal(mapPortalReceipt({ ...portalReceipt, added_offers: [{ ...portalReceipt.added_offers[0], location: 'Paris, France' }] })[0].country, 'France');
   assert.equal(parsePortalReceipt(`progress\n${JSON.stringify(portalReceipt)}`).added, 1);
   const result = await runPortalScanDryRun({ root: '/repo', stage: { posting_age_days: 7 }, countryCoverage: { Sweden: ['The Hub'] }, execFileFn: async () => ({ stdout: JSON.stringify(portalReceipt) }) });
   assert.deepEqual(result.sources[0].countries, { Sweden: ['The Hub'] });

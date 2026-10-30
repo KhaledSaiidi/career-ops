@@ -20,13 +20,14 @@ import { isMainModule } from './lib/is-main-module.mjs';
 
 const USAGE = `Usage:
   node daily-discovery.mjs --fixture <staged-candidates.json> [--persist-state] [--state <path>]
-  node daily-discovery.mjs --live-scan [--source portals|full-ats] [--evaluate] [--max-stages N] [--persist-state] [--state <path>] [--write-sheet]
+  node daily-discovery.mjs --live-scan [--source portals|full-ats] [--evaluate] [--max-stages N] [--max-candidates N] [--persist-state] [--state <path>] [--write-sheet]
 
 --live-scan runs the selected scanner with --dry-run --json only. It never writes
 pipeline/history/Sheets. --evaluate is explicit because it sends the CV and JD
 to the configured evaluator (Codex CLI by default); without it candidates are verified only.
-Live scan defaults to one stage; pass --max-stages 8 only after validating
-source budgets and configured evaluator availability.`;
+Live scans use all progressive stages and evaluate every verified, unique
+candidate returned by each attempted source. --max-stages and
+--max-candidates are optional operator limits for diagnostics only.`;
 function value(args, flag) { const i = args.indexOf(flag); return i < 0 ? null : args[i + 1]; }
 function json(path) { return JSON.parse(readFileSync(path, 'utf8')); }
 export function parseDailySourceArgs(args) {
@@ -59,8 +60,11 @@ export async function main(args = process.argv.slice(2)) {
     const source = value(args, '--source') ?? 'portals';
     if (!['portals', 'full-ats'].includes(source)) throw new Error('--source must be portals or full-ats');
     const maxStagesRaw = value(args, '--max-stages');
-    const maxStages = maxStagesRaw === null ? (liveScan ? 1 : undefined) : Number(maxStagesRaw);
+    const maxStages = maxStagesRaw === null ? undefined : Number(maxStagesRaw);
     if (maxStages !== undefined && (!Number.isInteger(maxStages) || maxStages < 1 || maxStages > 8)) throw new Error('--max-stages must be an integer from 1 to 8');
+    const maxCandidatesRaw = value(args, '--max-candidates');
+    const maxCandidates = maxCandidatesRaw === null ? undefined : Number(maxCandidatesRaw);
+    if (maxCandidates !== undefined && (!Number.isInteger(maxCandidates) || maxCandidates < 1)) throw new Error('--max-candidates must be a positive integer');
     const { report, state: next } = await runProgressiveSearch({
     config, state,
     discover: async (stage) => fixture ? (fixture[stage.name] ?? { candidates: [], sources: [], note: 'No fixture candidates for stage' }) : source === 'portals'
@@ -68,6 +72,7 @@ export async function main(args = process.argv.slice(2)) {
       : runFullAtsDryRun({ root, stage }),
     assess: async (candidate) => fixture ? (candidate.assessment ?? { accepted: false, application_ready: false, decision: 'not_assessed' }) : assessDailyCandidate(candidate, { root, evaluate, backend: evaluatorBackend }),
     ...(maxStages === undefined ? {} : { maxStages }),
+    ...(maxCandidates === undefined ? {} : { maxCandidates }),
     });
   // Persist accepted records before a remote write. If the process or network
   // fails during export, the next explicit export can resume from pending state.

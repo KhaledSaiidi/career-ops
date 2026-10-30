@@ -28,7 +28,9 @@ discovery:
   maximum_posting_age_days: 90
   require_confirmed_eligibility_blocker_exclusion: true
   allow_unknown_sponsorship_when_no_blocker: true
-  write_google_sheet: false
+  # Enabled only after read-only schema/auth validation. A write still requires
+  # the explicit --write-sheet flag and the append-only export ledger.
+  write_google_sheet: true
   # Adapter selection is explicit; all runs retain source/country provenance.
   country_source_coverage:
     Netherlands: ["Welcome to the Jungle — Netherlands", "Adyen official Greenhouse"]
@@ -37,6 +39,49 @@ discovery:
     Denmark: ["The Hub — Denmark"]
     Luxembourg: ["Welcome to the Jungle — Luxembourg", "SES official SuccessFactors"]
     Sweden: ["The Hub — Sweden"]
+
+  # Source inventory. `active` entries are backed by a configured Career-Ops
+  # provider in portals.yml; `pending_adapter` entries are intentionally not
+  # presented as discovery coverage until a compliant, tested connector exists.
+  source_inventory:
+    - name: "The Hub — Denmark"
+      countries: [Denmark]
+      status: active
+      configured_as: "portals.yml: The Hub — Denmark (provider: thehub)"
+    - name: "Welcome to the Jungle"
+      countries: [Netherlands, France, Belgium, Luxembourg]
+      status: active
+      configured_as: "portals.yml: country-specific WTTJ entries (provider: wttj)"
+    - name: "Apec"
+      countries: [France]
+      status: pending_adapter
+      url: "https://www.apec.fr/candidat/recherche-emploi.html"
+      constraint: "Public retrieval returned Apec/DataDome 403 on 2026-10-30; enable only with an official permitted feed or approved API access. France Travail is not an Apec substitute."
+    - name: "LesJeudis"
+      countries: [France]
+      status: pending_adapter
+      url: "https://lesjeudis.com/jobs"
+      constraint: "Public retrieval returned Cloudflare 403 on 2026-10-30; enable only with a permitted public feed, never by bypassing bot controls."
+    - name: "IamExpat Jobs"
+      countries: [Netherlands]
+      status: pending_adapter
+      url: "https://www.iamexpat.nl/career/jobs-netherlands"
+      constraint: "Public listing route is reachable; requires a tested read-only Career-Ops adapter and employer-application URL extraction before enabling."
+    - name: "DutchNews Jobs"
+      countries: [Netherlands]
+      status: pending_adapter
+      url: "https://www.nederlandpost.nl/jobs"
+      constraint: "Powered by IamExpat; share a deduplication identity with IamExpat if an adapter is added."
+    - name: "Undutchables"
+      countries: [Netherlands]
+      status: pending_adapter
+      url: "https://www.undutchables.nl/jobs"
+      constraint: "Public retrieval returned Cloudflare 403 on 2026-10-30; enable only with a permitted public feed. Agency roles also require official vacancy URLs and employer-identity verification."
+    - name: "GraduateLand"
+      countries: [Denmark, Sweden]
+      status: pending_adapter
+      url: "https://graduateland.com/jobs"
+      constraint: "Redirects to JobTeaser, whose public route returned a Cloudflare challenge on 2026-10-30; graduate-focused roles remain subject to the existing Graduate exclusion."
 
 # The credential path remains an environment variable, never committed.
 sheets:

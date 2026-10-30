@@ -12,9 +12,9 @@ await check('three qualifying jobs force the next discovery stage', async () => 
   const { report } = await runProgressiveSearch({ config, discover: async (stage) => { stages.push(stage.name); return stage.number === 1 ? { candidates: [job(1), job(2), job(3)], sources: ['fixture'] } : stage.number === 2 ? { candidates: [job(4), job(5)], sources: ['fixture'] } : { candidates: [] }; }, assess: async (candidate) => candidate.assessment });
   assert.equal(report.accepted.length, 5); assert.deepEqual(stages, ['normal_discovery', 'expand_sources']);
 });
-await check('five qualifying jobs stop expansion at the preferred target', async () => {
-  const { report } = await runProgressiveSearch({ config, discover: async () => ({ candidates: [job(1), job(2), job(3), job(4), job(5)], sources: ['fixture'] }), assess: async (candidate) => candidate.assessment });
-  assert.equal(report.attempts.length, 1); assert.equal(report.shortfall, 0);
+await check('a preferred target stops fallback expansion only after every candidate in the current source batch is assessed', async () => {
+  const { report } = await runProgressiveSearch({ config, discover: async () => ({ candidates: [job(1), job(2), job(3), job(4), job(5), job(6)], sources: ['fixture'] }), assess: async (candidate) => candidate.assessment });
+  assert.equal(report.accepted.length, 6); assert.equal(report.attempts.length, 1); assert.equal(report.shortfall, 0);
 });
 await check('exhaustion with three writes a precise two-job shortfall and restart skips processed candidates', async () => {
   const state = { version: 2, processed: {}, identity_index: {}, runs: {} };
